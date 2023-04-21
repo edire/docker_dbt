@@ -1,0 +1,13 @@
+# custom
+*.py
+!/app/*.py
+*.env
+*.csv
+__pycache__/
+logs/
+*.bat
+
+# dbt
+target/
+dbt_packages/
+logs/

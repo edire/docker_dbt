@@ -1,0 +1,3 @@
+dbt-bigquery
+git+https://github.com/edire/dlogging.git
+git+https://github.com/edire/demail.git
