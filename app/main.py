@@ -14,7 +14,8 @@ logger.info(f'beginning package: {package_name}')
 
 logger.info('Read In Results')
 
-filepath = os.path.join(os.getenv('git_dir'), 'target', 'run_results.json')
+current_filepath = os.path.dirname(os.path.abspath(__file__))
+filepath = os.path.join(current_filepath, os.getenv('git_dir'), 'target', 'run_results.json')
 with open(filepath, 'r') as f:
     js = f.read()
 js = json.loads(js)
@@ -34,7 +35,7 @@ error_list = ''
 warn_list = ''
 
 for x in js['results']:
-    if x['status'] == 'success':
+    if x['status'] == 'success' or x['status'] == 'pass':
         num_success += 1
     elif x['status'] == 'warn':
         num_warn += 1
@@ -47,6 +48,8 @@ for x in js['results']:
     elif x['status'] == 'skipped':
         num_skip += 1
     num_total += 1
+
+elapsed_time = js['elapsed_time']
 
 
 #%% Send Email
@@ -61,7 +64,9 @@ else:
     subject=f'Success - {package_name}'
 
 body = [
-    f'PASS={num_success} WARN={num_warn} ERROR={num_error} SKIP={num_skip} TOTAL={num_total}'
+    f'Total Elapsed Time: {elapsed_time}'
+    , '<br>'
+    , f'PASS={num_success}   WARN={num_warn}   ERROR={num_error}   SKIP={num_skip}   TOTAL={num_total}'
     , '<br>'
     , 'Errors:'
     , error_list

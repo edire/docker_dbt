@@ -1,6 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 git clone $git_repo
 cd $git_dir
 dbt build
-cd ..
-python main.py
+python /app/app.py
