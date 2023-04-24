@@ -114,6 +114,7 @@ elif str(current_time.hour) in os.getenv('send_summary_hr').split(','):
         select *
         from {name}
         where results_time >= date_add(CURRENT_DATETIME, INTERVAL -24 HOUR)
+        order by results_time desc
         """
     df_summary = con.read(sql)
     body = df_summary.to_html().replace('\n', '')
