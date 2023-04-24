@@ -1,3 +1,5 @@
 dbt-bigquery
+pandas
 git+https://github.com/edire/dlogging.git
 git+https://github.com/edire/demail.git
+git+https://github.com/edire/ddb.git

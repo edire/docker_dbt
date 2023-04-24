@@ -4,10 +4,15 @@ import os
 from demail.gmail import SendEmail
 import json
 import dlogging
+import pandas as pd
+from ddb.bigquery import SQL
+from datetime import datetime as dt
+
 
 logger = dlogging.NewLogger(__file__, use_cd=True)
 package_name = os.getenv('package_name')
 logger.info(f'beginning package: {package_name}')
+current_time = dt.now()
 
 
 #%% Read In Results
@@ -52,33 +57,73 @@ for x in js['results']:
 elapsed_time = js['elapsed_time']
 
 
+#%% Store results in SQL
+
+logger.info('Store results in SQL')
+
+results_dict = {
+    'package': package_name,
+    'results_time': current_time,
+    'is_success': 1 if num_success == num_total else 0,
+    'num_success': num_success,
+    'num_warn': num_warn,
+    'num_error': num_error,
+    'num_skip': num_skip,
+    'num_total': num_total,
+    'elapsed_time': elapsed_time,
+    'errors': error_list,
+    'warnings': warn_list,
+}
+
+df = pd.DataFrame.from_dict(results_dict, orient='index').T
+df = df.infer_objects()
+
+con = SQL(os.getenv('dbt_keyfile'))
+dataset = os.getenv('dataset')
+name = f'{dataset}_stage.dbt_run_results'
+con.to_sql(df, name, if_exists='append', index=False)
+
+
 #%% Send Email
 
 logger.info('Send Email')
+send_email = False
 
 if error_list != '':
+    send_email = True
     to_email_addresses=os.getenv('email_fail')
     subject=f'Error - {package_name}'
-else:
+    body = [
+        f'Total Elapsed Time: {elapsed_time}'
+        , '<br>'
+        , f'PASS={num_success}   WARN={num_warn}   ERROR={num_error}   SKIP={num_skip}   TOTAL={num_total}'
+        , '<br>'
+        , 'Errors:'
+        , error_list
+        , '<br><br>'
+        , 'Warnings:'
+        , warn_list
+        ]
+    attach_file_address=filepath
+elif str(current_time.hour) in os.getenv('send_summary_hr').split(','):
+    send_email = True
     to_email_addresses=os.getenv('email_success')
-    subject=f'Success - {package_name}'
+    subject=f'dbt summary'
 
-body = [
-    f'Total Elapsed Time: {elapsed_time}'
-    , '<br>'
-    , f'PASS={num_success}   WARN={num_warn}   ERROR={num_error}   SKIP={num_skip}   TOTAL={num_total}'
-    , '<br>'
-    , 'Errors:'
-    , error_list
-    , '<br><br>'
-    , 'Warnings:'
-    , warn_list
-    ]
+    sql = f"""
+        select *
+        from {name}
+        where results_time >= date_add(CURRENT_DATETIME, INTERVAL -24 HOUR)
+        """
+    df_summary = con.read(sql)
+    body = df_summary.to_html().replace('\n', '')
+    attach_file_address=None
 
-SendEmail(to_email_addresses=to_email_addresses
-                    , subject=subject
-                    , body=body
-                    , attach_file_address=filepath
-                    , user=os.getenv('email_uid')
-                    , password=os.getenv('email_pwd')
-                    )
+if send_email == True:
+    SendEmail(to_email_addresses=to_email_addresses
+                        , subject=subject
+                        , body=body
+                        , attach_file_address=attach_file_address
+                        , user=os.getenv('email_uid')
+                        , password=os.getenv('email_pwd')
+                        )
