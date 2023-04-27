@@ -86,10 +86,11 @@ con.to_sql(df, name, if_exists='append', index=False)
 
 #%% Send Email
 
-logger.info('Send Email')
+logger.info('Check Send Email')
 send_email = False
 
 if error_list != '':
+    logger.info('Send Error Email')
     send_email = True
     to_email_addresses=os.getenv('email_fail')
     subject=f'Error - {package_name}'
@@ -105,7 +106,8 @@ if error_list != '':
         , warn_list
         ]
     attach_file_address=filepath
-elif str(current_time.hour) in os.getenv('send_summary_hr').split(','):
+elif str(current_time.hour) in os.getenv('send_summary_hr').split(',') and current_time.minute <= int(os.getenv('send_summary_minute')):
+    logger.info('Send Summary Email')
     send_email = True
     to_email_addresses=os.getenv('email_success')
     subject=f'dbt summary'
@@ -119,6 +121,8 @@ elif str(current_time.hour) in os.getenv('send_summary_hr').split(','):
     df_summary = con.read(sql)
     body = df_summary.to_html().replace('\n', '')
     attach_file_address=None
+else:
+    logger.info('No Email Required')
 
 if send_email == True:
     SendEmail(to_email_addresses=to_email_addresses
