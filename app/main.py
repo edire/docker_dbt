@@ -15,6 +15,15 @@ logger.info(f'beginning package: {package_name}')
 current_time = dt.now()
 
 
+#%% Bigquery Connection Info
+
+logger.info('Bigquery Connection Info')
+
+con = SQL(os.getenv('dbt_keyfile'))
+dataset = os.getenv('dataset')
+name = f'{dataset}_stage.dbt_run_results'
+
+
 #%% Read In Results
 
 logger.info('Read In Results')
@@ -35,6 +44,7 @@ num_warn = 0
 num_error = 0
 num_skip = 0
 num_total = 0
+bytes_processed = 0
 
 error_list = ''
 warn_list = ''
@@ -52,39 +62,16 @@ for x in js['results']:
         error_list += x['message'] + '\n\n'
     elif x['status'] == 'skipped':
         num_skip += 1
+    try:
+        bytes_processed += x['adapter_response']['bytes_processed']
+    except:
+        pass
     num_total += 1
 
 elapsed_time = js['elapsed_time']
 
 
-#%% Store results in SQL
-
-logger.info('Store results in SQL')
-
-results_dict = {
-    'package': package_name,
-    'results_time': current_time,
-    'is_success': 1 if num_success == num_total else 0,
-    'num_success': num_success,
-    'num_warn': num_warn,
-    'num_error': num_error,
-    'num_skip': num_skip,
-    'num_total': num_total,
-    'elapsed_time': elapsed_time,
-    'errors': error_list,
-    'warnings': warn_list,
-}
-
-df = pd.DataFrame.from_dict(results_dict, orient='index').T
-df = df.infer_objects()
-
-con = SQL(os.getenv('dbt_keyfile'))
-dataset = os.getenv('dataset')
-name = f'{dataset}_stage.dbt_run_results'
-con.to_sql(df, name, if_exists='append', index=False)
-
-
-#%% Send Email
+#%% Check Send Email
 
 logger.info('Check Send Email')
 send_email = False
@@ -123,6 +110,36 @@ elif str(current_time.hour) in os.getenv('send_summary_hr').split(',') and curre
     attach_file_address=None
 else:
     logger.info('No Email Required')
+
+
+#%% Store results in SQL
+
+logger.info('Store results in SQL')
+
+results_dict = {
+    'package': package_name,
+    'results_time': current_time,
+    'is_success': 1 if num_success == num_total else 0,
+    'num_success': num_success,
+    'num_warn': num_warn,
+    'num_error': num_error,
+    'num_skip': num_skip,
+    'num_total': num_total,
+    'elapsed_time': elapsed_time,
+    'errors': error_list,
+    'warnings': warn_list,
+    'gb_processed': round(bytes_processed / (1000 ** 3), 1),
+    'send_email': 1 if send_email else 0
+}
+
+df = pd.DataFrame.from_dict(results_dict, orient='index').T
+df = df.infer_objects()
+con.to_sql(df, name, if_exists='append', index=False)
+
+
+#%% Send Email
+
+logger.info('Send Email')
 
 if send_email == True:
     SendEmail(to_email_addresses=to_email_addresses
