@@ -74,40 +74,14 @@ elapsed_time = js['elapsed_time']
 #%% Check Send Email
 
 logger.info('Check Send Email')
-send_email = False
+send_email = None
 
 if error_list != '':
-    logger.info('Send Error Email')
-    send_email = True
-    to_email_addresses=os.getenv('email_fail')
-    subject=f'Error - {package_name}'
-    body = [
-        f'Total Elapsed Time: {elapsed_time}'
-        , '<br>'
-        , f'PASS={num_success}   WARN={num_warn}   ERROR={num_error}   SKIP={num_skip}   TOTAL={num_total}'
-        , '<br>'
-        , 'Errors:'
-        , error_list
-        , '<br><br>'
-        , 'Warnings:'
-        , warn_list
-        ]
-    attach_file_address=filepath
+    logger.info('Error Email Required')
+    send_email = 'error'
 elif str(current_time.hour) in os.getenv('send_summary_hr').split(',') and current_time.minute <= int(os.getenv('send_summary_minute')):
-    logger.info('Send Summary Email')
-    send_email = True
-    to_email_addresses=os.getenv('email_success')
-    subject=f'dbt summary'
-
-    sql = f"""
-        select *
-        from {name}
-        where results_time >= date_add(CURRENT_DATETIME, INTERVAL -24 HOUR)
-        order by results_time desc
-        """
-    df_summary = con.read(sql)
-    body = df_summary.to_html().replace('\n', '')
-    attach_file_address=None
+    logger.info('Summary Email Required')
+    send_email = 'summary'
 else:
     logger.info('No Email Required')
 
@@ -129,7 +103,7 @@ results_dict = {
     'errors': error_list,
     'warnings': warn_list,
     'gb_processed': round(bytes_processed / (1000 ** 3), 1),
-    'send_email': 1 if send_email else 0
+    'send_email': 1 if send_email != None else 0
 }
 
 df = pd.DataFrame.from_dict(results_dict, orient='index').T
@@ -139,9 +113,40 @@ con.to_sql(df, name, if_exists='append', index=False)
 
 #%% Send Email
 
-logger.info('Send Email')
+if send_email == 'error':
+    logger.info('Send Error Email')
+    to_email_addresses=os.getenv('email_fail')
+    subject=f'Error - {package_name}'
+    body = [
+        f'Total Elapsed Time: {elapsed_time}'
+        , '<br>'
+        , f'PASS={num_success}   WARN={num_warn}   ERROR={num_error}   SKIP={num_skip}   TOTAL={num_total}'
+        , '<br>'
+        , 'Errors:'
+        , error_list
+        , '<br><br>'
+        , 'Warnings:'
+        , warn_list
+        ]
+    attach_file_address=filepath
+    
+elif send_email == 'summary':
+    logger.info('Send Summary Email')
+    to_email_addresses=os.getenv('email_success')
+    subject=f'dbt summary'
 
-if send_email == True:
+    sql = f"""
+        select *
+        from {name}
+        where results_time >= date_add(CURRENT_DATETIME, INTERVAL -24 HOUR)
+        order by results_time desc
+        """
+    df_summary = con.read(sql)
+    body = df_summary.to_html().replace('\n', '')
+    attach_file_address=None
+
+
+if send_email != None:
     SendEmail(to_email_addresses=to_email_addresses
                         , subject=subject
                         , body=body
