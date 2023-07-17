@@ -54,12 +54,12 @@ for x in js['results']:
         num_success += 1
     elif x['status'] == 'warn':
         num_warn += 1
-        logger.warning(x['message'])
-        warn_list += x['message'] + '\n\n'
+        logger.warning(x['unique_id'] + ' - ' + x['message'])
+        warn_list += x['unique_id'] + ' - ' + x['message'] + '\n\n'
     elif x['status'] == 'error':
         num_error += 1
-        logger.critical(x['message'])
-        error_list += x['message'] + '\n\n'
+        logger.critical(x['unique_id'] + ' - ' + x['message'])
+        error_list += x['unique_id'] + ' - ' + x['message'] + '\n\n'
     elif x['status'] == 'skipped':
         num_skip += 1
     try:
