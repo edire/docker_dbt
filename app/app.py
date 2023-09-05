@@ -20,10 +20,10 @@ try:
 except Exception as e:
     e = str(e)
     logger.critical(f'{e}\n', exc_info=True)
-    SendEmail(to_email_addresses=os.getenv('email_fail')
+    SendEmail(to_email_addresses=os.getenv('EMAIL_FAIL')
                         , subject=f'Python Error - {package_name}'
                         , body=e
                         , attach_file_address=logger.handlers[0].baseFilename
-                        , user=os.getenv('email_uid')
-                        , password=os.getenv('email_pwd')
+                        , user=os.getenv('EMAIL_UID')
+                        , password=os.getenv('EMAIL_PWD')
                         )

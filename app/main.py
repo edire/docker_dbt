@@ -10,7 +10,7 @@ from datetime import datetime as dt
 
 
 logger = dlogging.NewLogger(__file__, use_cd=True)
-package_name = os.getenv('package_name')
+package_name = os.getenv('PACKAGE_NAME')
 logger.info(f'beginning package: {package_name}')
 current_time = dt.now()
 
@@ -19,8 +19,8 @@ current_time = dt.now()
 
 logger.info('Bigquery Connection Info')
 
-con = SQL(os.getenv('dbt_keyfile'))
-dataset = os.getenv('dataset')
+con = SQL(os.getenv('DBT_KEYFILE'))
+dataset = os.getenv('DBT_DATASET')
 name = f'{dataset}_stage.dbt_run_results'
 
 
@@ -29,7 +29,7 @@ name = f'{dataset}_stage.dbt_run_results'
 logger.info('Read In Results')
 
 current_filepath = os.path.dirname(os.path.abspath(__file__))
-filepath = os.path.join(current_filepath, os.getenv('git_dir'), 'target', 'run_results.json')
+filepath = os.path.join(current_filepath, os.getenv('GIT_DIR'), 'target', 'run_results.json')
 with open(filepath, 'r') as f:
     js = f.read()
 js = json.loads(js)
@@ -79,7 +79,7 @@ send_email = None
 if error_list != '':
     logger.info('Error Email Required')
     send_email = 'error'
-elif str(current_time.hour) in os.getenv('send_summary_hr').split(',') and current_time.minute <= int(os.getenv('send_summary_minute')):
+elif str(current_time.hour) in os.getenv('SEND_SUMMARY_HR').split(',') and current_time.minute <= int(os.getenv('SEND_SUMMARY_MIN')):
     logger.info('Summary Email Required')
     send_email = 'summary'
 else:
@@ -115,7 +115,7 @@ con.to_sql(df, name, if_exists='append', index=False)
 
 if send_email == 'error':
     logger.info('Send Error Email')
-    to_email_addresses=os.getenv('email_fail')
+    to_email_addresses=os.getenv('EMAIL_FAIL')
     subject=f'Error - {package_name}'
     body = [
         f'Total Elapsed Time: {elapsed_time}'
@@ -132,7 +132,7 @@ if send_email == 'error':
     
 elif send_email == 'summary':
     logger.info('Send Summary Email')
-    to_email_addresses=os.getenv('email_success')
+    to_email_addresses=os.getenv('EMAIL_SUCCESS')
     subject=f'dbt summary'
 
     sql = f"""
@@ -151,6 +151,6 @@ if send_email != None:
                         , subject=subject
                         , body=body
                         , attach_file_address=attach_file_address
-                        , user=os.getenv('email_uid')
-                        , password=os.getenv('email_pwd')
+                        , user=os.getenv('EMAIL_UID')
+                        , password=os.getenv('EMAIL_PWD')
                         )
