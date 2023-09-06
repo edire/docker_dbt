@@ -1,6 +1,6 @@
 #!/bin/sh
-git clone --depth 1 $git_repo
-cd $git_dir
+git clone --depth 1 $GIT_REPO
+cd $GIT_DIR
 dbt deps
-eval $dbt_command
+eval $DBT_COMMAND
 python /app/app.py
