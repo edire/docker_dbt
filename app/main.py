@@ -29,8 +29,7 @@ name = f'{dataset}_stage.dbt_run_results'
 logger.info('Read In Results')
 
 current_filepath = os.path.dirname(os.path.abspath(__file__))
-git_dir = os.getenv('GIT_REPO').split('/')[-1].split('.')[0]
-filepath = os.path.join(current_filepath, git_dir, 'target', 'run_results.json')
+filepath = os.path.join(current_filepath, os.getenv('GIT_DIR'), 'target', 'run_results.json')
 with open(filepath, 'r') as f:
     js = f.read()
 js = json.loads(js)
